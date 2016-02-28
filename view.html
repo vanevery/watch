@@ -1,0 +1,74 @@
+<html>
+	<head>
+		<script src="peer.min.js"></script>		
+		<script type="text/javascript" src="/socket.io/socket.io.js"></script>
+
+		<script type="text/javascript">
+
+			var peer_id = null;
+
+			var peer = new Peer({host: 'liveweb.itp.io', port: 9000, path: '/'});
+
+			// Get an ID from the PeerJS server		
+			peer.on('open', function(id) {
+				  console.log('My peer ID is: ' + id);
+				  peer_id = id;
+				if (socket != null) {
+					socket.emit('peerid', peer_id);
+				}
+			});		
+
+			peer.on('call', function(incoming_call) {
+				console.log("Got a call!");
+				incoming_call.answer(null); 
+				incoming_call.on('stream', function(remoteStream) {  // we receive a getUserMedia stream from the remote caller
+					var ovideoElement = document.getElementById('video');
+					ovideoElement.src = window.URL.createObjectURL(remoteStream) || remoteStream;
+					ovideoElement.setAttribute("autoplay", "true");		
+					ovideoElement.play();
+				});
+			});
+
+			function makeCall(peeridtocall) {
+				var call = peer.call(peeridtocall,null);
+				console.log(call);
+				call.on('stream', function(remoteStream) {
+					console.log("Got remote stream");
+					var ovideoElement = document.getElementById('video');
+					ovideoElement.src = window.URL.createObjectURL(remoteStream) || remoteStream;
+					ovideoElement.setAttribute("autoplay", "true");
+					ovideoElement.play();
+				});
+			}
+
+			var socket = io.connect();
+			
+			socket.on('connect', function() {
+				console.log("Connected");
+			});
+
+			// Receive from any event
+			socket.on('chatmessage', function (data) {
+				console.log(data);
+				document.getElementById('messages').innerHTML = "<br />" + data + 
+ + "" + document.getElementById('messages').innerHTML;
+				if (data == "help") {
+					document.body.style.backgroundColor = "red";
+				}
+			});
+			
+			var sendmessage = function(message) {
+				console.log("chatmessage: " + message);
+				socket.emit('chatmessage', message);
+			};
+
+		</script>
+	</head>
+	<body>
+		<video id="video" width=320 height=240></video>
+		<input type="text" id="thetext">
+		<input type="button" value="send" onclick="sendmessage(document.getElementById('thetext').value);">
+		<div id="messages"></div>
+		
+	</body>
+</html>
